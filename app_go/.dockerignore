@@ -1,0 +1,30 @@
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go test files
+*.test
+*.out
+
+# Vendor directory
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+docs/
+README.md
+*.md
+
+# OS files
+.DS_Store

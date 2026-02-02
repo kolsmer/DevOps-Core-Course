@@ -299,25 +299,41 @@ FastAPI provides interactive documentation at:
 - **Swagger UI:** http://localhost:8000/docs
 - **ReDoc:** http://localhost:8000/redoc
 
-## Next Steps
+## Docker
 
-This service will evolve throughout the course:
-- **Lab 2:** Containerize with Docker
-- **Lab 3:** Add unit tests
-- **Lab 8:** Add Prometheus metrics endpoint
-- **Lab 9:** Deploy to Kubernetes
+### Building the Image
 
-## Resources
+```bash
+docker build -t kolsmer/devops-app:1.0 .
+```
 
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Uvicorn Documentation](https://www.uvicorn.org/)
-- [PEP 8 Style Guide](https://pep8.org/)
-- [Python Logging](https://docs.python.org/3/howto/logging.html)
+### Running the Container
 
-## License
+```bash
+docker run -d -p 8000:8000 --name devops-app kolsmer/devops-app:1.0
+```
 
-This project is part of the DevOps course.
+### Testing the Containerized App
 
----
+```bash
+curl http://localhost:8000/
+curl http://localhost:8000/health
+```
 
-**Ready to deploy?** Check out the documentation in `docs/LAB01.md` for detailed implementation notes.
+### Pulling from Docker Hub
+
+```bash
+docker pull kolsmer/devops-app:1.0
+docker run -d -p 8000:8000 kolsmer/devops-app:1.0
+```
+
+### Stopping the Container
+
+```bash
+docker stop devops-app
+docker rm devops-app
+```
+
+For detailed Docker implementation, see [docs/LAB02.md](docs/LAB02.md).
+
+
