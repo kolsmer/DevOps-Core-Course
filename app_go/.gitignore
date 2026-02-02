@@ -1,0 +1,6 @@
+# Go build artifacts
+/devops-service
+/devops-service-linux
+*.exe
+*.test
+*.out
