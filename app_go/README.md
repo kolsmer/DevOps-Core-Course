@@ -40,6 +40,37 @@ ls -lh devops-service
 ```
 Go binary: **7.0 MB** (static executable). Python version is interpreted (no binary; size = source + interpreter). Documented in docs/LAB01.md.
 
+## Docker
+
+### Build Multi-Stage Image
+```bash
+docker build -t kolsmer/devops-go:1.0 .
+```
+
+### Run Container
+```bash
+docker run -d -p 8000:8000 --name devops-go kolsmer/devops-go:1.0
+```
+
+### Test
+```bash
+curl http://localhost:8000/
+curl http://localhost:8000/health
+```
+
+### Image Comparison
+- **Single-stage build**: 305MB (includes Go compiler)
+- **Multi-stage build**: 13.2MB (binary only)
+- **Size reduction**: 95.7% (23x smaller)
+
+### Pull from Docker Hub
+```bash
+docker pull kolsmer/devops-go:1.0
+docker run -p 8000:8000 kolsmer/devops-go:1.0
+```
+
+For detailed multi-stage build explanation, see [docs/LAB02-BONUS.md](docs/LAB02-BONUS.md).
+
 ## Notes
 - Same JSON schema as Python app
 - Uses only Go standard library

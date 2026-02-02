@@ -1,0 +1,15 @@
+# Single-stage build (for comparison)
+FROM golang:1.22-alpine
+
+WORKDIR /app
+
+COPY go.mod main.go ./
+
+RUN go build -o app main.go
+
+RUN adduser -D -u 1000 appuser
+USER appuser
+
+EXPOSE 8000
+
+CMD ["./app"]
