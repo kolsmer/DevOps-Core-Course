@@ -18,7 +18,7 @@ pytest
 - **Triggers:** push/PR only when `app_python/**` changes.
 - **Jobs:**
   - **Test job:** ruff lint + pytest (Python 3.12)
-  - **Docker job:** build + push (only on main/master)
+  - **Docker job:** build + push (main/master/lab03)
 
 ## Docker Tags (CalVer)
 - `kolsmer/devops-app:YYYY.MM.DD`
@@ -42,9 +42,9 @@ pytest
 - `SNYK_TOKEN` (optional but recommended)
 
 ## Evidence
-- **Workflow run:** https://github.com/kolsmer/DevOps-Core-Course/actions/runs/21863430934
+- **Workflow run:** https://github.com/kolsmer/DevOps-Core-Course/actions/runs/21863701231
 - **Docker Hub:** https://hub.docker.com/r/kolsmer/devops-app
-- **Docker Hub tags:** `latest`, `1.0` (see docker-tags screenshot)
+- **Docker Hub tags:** `latest`, `2026.02`, `2026.02.10`
 - **Cache:** first run `pip cache is not found` (cold cache).
 - **Snyk:** Tested 13 dependencies, no vulnerable paths found.
 - **Tests output:**
