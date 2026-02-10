@@ -54,7 +54,7 @@ jobs:
 
       - name: Snyk scan
         if: ${{ env.SNYK_TOKEN != '' }}
-        uses: snyk/actions/python@v3.1.0
+        uses: snyk/actions/python@v1.0.0
         with:
           command: test
           args: --severity-threshold=high
