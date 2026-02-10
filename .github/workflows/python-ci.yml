@@ -55,12 +55,14 @@ jobs:
       - name: Install deps for Snyk
         run: pip install -r requirements.txt
 
+      - name: Set up Snyk CLI
+        if: ${{ env.SNYK_TOKEN != '' }}
+        uses: snyk/actions/setup@v1.0.0
+
       - name: Snyk scan
         if: ${{ env.SNYK_TOKEN != '' }}
-        uses: snyk/actions/python@v1.0.0
-        with:
-          command: test
-          args: --severity-threshold=high --file=app_python/requirements.txt
+        run: snyk test --severity-threshold=high --file=requirements.txt
+        working-directory: app_python
 
   docker:
     name: Docker Build and Push

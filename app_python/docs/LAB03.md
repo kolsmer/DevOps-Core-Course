@@ -47,7 +47,6 @@ pytest
 - **Docker Hub:** https://hub.docker.com/r/kolsmer/devops-app
 - **Docker Hub tags:** `latest`, `1.0` (see docker-tags screenshot)
 - **Tests output:**
-
 ```
 ================================== test session starts ===================================
 platform linux -- Python 3.12.3, pytest-8.3.4, pluggy-1.6.0
