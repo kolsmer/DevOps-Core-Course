@@ -45,6 +45,7 @@ pytest
 ## Evidence
 - **Workflow run:** <paste Actions link>
 - **Docker Hub:** https://hub.docker.com/r/kolsmer/devops-app
+- **Docker Hub tags:** `latest`, `1.0` (see docker-tags screenshot)
 - **Tests output:**
 ```
 ================================== test session starts ===================================
