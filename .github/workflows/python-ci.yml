@@ -52,6 +52,9 @@ jobs:
       - name: Run tests
         run: pytest
 
+      - name: Install deps for Snyk
+        run: pip install -r requirements.txt
+
       - name: Snyk scan
         if: ${{ env.SNYK_TOKEN != '' }}
         uses: snyk/actions/python@v1.0.0
