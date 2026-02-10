@@ -57,7 +57,7 @@ jobs:
         uses: snyk/actions/python@v1.0.0
         with:
           command: test
-          args: --severity-threshold=high
+          args: --severity-threshold=high --file=app_python/requirements.txt
 
   docker:
     name: Docker Build and Push
