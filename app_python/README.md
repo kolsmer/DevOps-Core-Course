@@ -1,5 +1,7 @@
 # DevOps Info Service
 
+[![Python CI](https://github.com/kolsmer/DevOps-Core-Course/actions/workflows/python-ci.yml/badge.svg?branch=master)](https://github.com/kolsmer/DevOps-Core-Course/actions/workflows/python-ci.yml)
+
 A web service that provides detailed information about itself and its runtime environment. Built with FastAPI, this service exposes system information, health status, and runtime metrics through REST API endpoints.
 
 ## Overview
@@ -34,7 +36,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 3. **Install dependencies:**
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 ```
 
 ## Running the Application
@@ -216,6 +218,12 @@ app_python/
    - Production-ready packages
 
 ## Testing
+
+### Automated Testing (pytest)
+
+```bash
+pytest
+```
 
 ### Manual Testing
 
