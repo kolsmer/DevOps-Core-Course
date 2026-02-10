@@ -17,7 +17,7 @@ pytest
 - **Workflow:** `.github/workflows/python-ci.yml`
 - **Triggers:** push/PR only when `app_python/**` changes.
 - **Jobs:**
-  - **Test job:** ruff lint + pytest (matrix: 3.12, 3.13)
+  - **Test job:** ruff lint + pytest (Python 3.12)
   - **Docker job:** build + push (only on main/master)
 
 ## Docker Tags (CalVer)
@@ -26,14 +26,13 @@ pytest
 - `kolsmer/devops-app:latest`
 
 ## Best Practices Applied
-- **Matrix testing:** catches version-specific issues.
 - **Dependency caching:** faster runs via `setup-python` pip cache.
 - **Job dependency:** Docker push only if tests pass.
 - **Concurrency:** cancels outdated runs.
 - **Secrets:** Docker Hub and Snyk tokens stored in GitHub Secrets.
 
 ## Security Scan (Snyk)
-- Action: `snyk/actions/python@v3.1.0`
+- Action: `snyk/actions/setup@v1.0.0` + `snyk test`
 - Threshold: `high`
 - Requires `SNYK_TOKEN` secret.
 
@@ -43,9 +42,11 @@ pytest
 - `SNYK_TOKEN` (optional but recommended)
 
 ## Evidence
-- **Workflow run:** <paste Actions link>
+- **Workflow run:** https://github.com/kolsmer/DevOps-Core-Course/actions/runs/21863430934
 - **Docker Hub:** https://hub.docker.com/r/kolsmer/devops-app
 - **Docker Hub tags:** `latest`, `1.0` (see docker-tags screenshot)
+- **Cache:** first run `pip cache is not found` (cold cache).
+- **Snyk:** Tested 13 dependencies, no vulnerable paths found.
 - **Tests output:**
 ```
 ================================== test session starts ===================================
