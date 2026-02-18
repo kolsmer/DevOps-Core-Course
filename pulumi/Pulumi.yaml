@@ -1,0 +1,26 @@
+name: devops-lab04
+runtime: python
+description: Lab 4 - Infrastructure as Code with Pulumi (Yandex Cloud)
+
+config:
+  cloud_id:
+    description: Yandex Cloud ID
+  folder_id:
+    description: Yandex Cloud Folder ID
+  service_account_key_file:
+    description: Path to service account key JSON
+  zone:
+    description: Yandex Cloud zone
+    default: ru-central1-a
+  instance_name:
+    description: Instance name
+    default: lab04-pulumi-vm
+  network_name:
+    description: VPC network name
+    default: lab04-network
+  security_group_name:
+    description: Existing security group name
+    default: lab04-vm-sg
+  ssh_public_key_path:
+    description: Path to SSH public key
+    default: /home/ramil/.ssh/id_ed25519.pub

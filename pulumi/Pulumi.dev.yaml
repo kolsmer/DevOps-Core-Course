@@ -1,0 +1,13 @@
+encryptionsalt: v1:D4xi/FnCfDY=:v1:14OfcIahE81SWoKv:IV/DK6SAVWnnzaZ36GoP4fxjIzgH+w==
+config:
+  devops-lab04:cloud_id: b1gdmnlf98a9thkgiv0e
+  devops-lab04:folder_id: b1ggncrdsjf3ccthnfm1
+  devops-lab04:service_account_key_file:
+    secure: v1:95KJ7VzQyHuLnzXP:Tlm5UXGjr/Rdc0LmSyJUBIfXUcoKptkuJpuC1/mOJ7mhzkii8Q6ikIvDct+MG6I+mMzNpaczljqeFWrF4AeKMTDJGRGLjLhAGVKEsFw=
+  devops-lab04:zone: ru-central1-a
+  devops-lab04:instance_name: lab04-pulumi-vm
+  devops-lab04:network_name: lab04-network
+  devops-lab04:subnet_cidr: 10.0.2.0/24
+  devops-lab04:ssh_public_key_path: /home/ramil/.ssh/id_ed25519.pub
+  python:python: /home/ramil/Work/DevOps-Core-Course/.venv/bin/python
+  devops-lab04:security_group_name: lab04-vm-sg
