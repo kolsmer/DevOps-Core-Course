@@ -1,2 +1,10 @@
 testterraform/yandex/key.json
+terraform/yandex/key.json
 /.vscode/
+
+# Ansible secrets and runtime artifacts
+ansible/.vault_pass
+ansible/*.retry
+ansible/.ansible/
+ansible/group_vars/all.yml.dec
+ansible/group_vars/all.yml.decrypted
