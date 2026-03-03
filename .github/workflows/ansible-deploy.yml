@@ -55,7 +55,7 @@ jobs:
     name: Deploy Application
     needs: lint
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && secrets.SSH_PRIVATE_KEY != '' && secrets.VM_HOST != '' && secrets.VM_USER != '' && secrets.ANSIBLE_VAULT_PASSWORD != ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,10 +73,13 @@ jobs:
 
       - name: Configure SSH key
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts
+          set -euo pipefail
+          test -n "${{ secrets.SSH_PRIVATE_KEY }}"
+          test -n "${{ secrets.VM_HOST }}"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > "$HOME/.ssh/id_rsa"
+          chmod 600 "$HOME/.ssh/id_rsa"
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> "$HOME/.ssh/known_hosts"
 
       - name: Deploy with Ansible
         run: |
@@ -85,7 +88,7 @@ jobs:
           chmod 600 .vault_pass
           cat > inventory/hosts.github.ini <<EOF
           [webservers]
-          ci-target ansible_host=${{ secrets.VM_HOST }} ansible_user=${{ secrets.VM_USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_python_interpreter=/usr/bin/python3
+          ci-target ansible_host=${{ secrets.VM_HOST }} ansible_user=${{ secrets.VM_USER }} ansible_ssh_private_key_file=$HOME/.ssh/id_rsa ansible_python_interpreter=/usr/bin/python3
           EOF
           echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault_pass
           ansible-playbook playbooks/deploy.yml \
