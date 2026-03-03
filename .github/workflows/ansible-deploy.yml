@@ -1,0 +1,83 @@
+name: Ansible Deployment
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'ansible/**'
+      - '!ansible/docs/**'
+      - '.github/workflows/ansible-deploy.yml'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-deploy.yml'
+
+jobs:
+  lint:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core ansible-lint
+          ansible-galaxy collection install community.docker
+
+      - name: Run ansible-lint
+        run: |
+          cd ansible
+          ansible-lint playbooks/*.yml
+
+  deploy:
+    name: Deploy Application
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible and collections
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core
+          ansible-galaxy collection install community.docker
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy with Ansible
+        run: |
+          cd ansible
+          cat > inventory/hosts.github.ini <<EOF
+          [webservers]
+          ci-target ansible_host=${{ secrets.VM_HOST }} ansible_user=${{ secrets.VM_USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_python_interpreter=/usr/bin/python3
+          EOF
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault_pass
+          ansible-playbook playbooks/deploy.yml \
+            -i inventory/hosts.github.ini \
+            --vault-password-file /tmp/vault_pass
+          rm -f /tmp/vault_pass
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -f "http://${{ secrets.VM_HOST }}:5000/health"

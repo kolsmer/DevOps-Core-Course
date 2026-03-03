@@ -1,19 +1,63 @@
 ---
-- name: Update apt cache
-  ansible.builtin.apt:
-    update_cache: yes
-    cache_valid_time: 3600
+- name: Manage common packages
+  block:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
 
-- name: Install common packages
-  ansible.builtin.apt:
-    name: "{{ common_packages }}"
-    state: present
+    - name: Install common packages
+      ansible.builtin.apt:
+        name: "{{ common_packages }}"
+        state: present
 
-- name: Check current timezone
-  ansible.builtin.command: timedatectl show -p Timezone --value
-  register: current_timezone
-  changed_when: false
+    - name: Check current timezone
+      ansible.builtin.command: timedatectl show -p Timezone --value
+      register: current_timezone
+      changed_when: false
 
-- name: Set timezone
-  ansible.builtin.command: timedatectl set-timezone {{ common_timezone }}
-  when: current_timezone.stdout != common_timezone
+    - name: Set timezone
+      ansible.builtin.command: timedatectl set-timezone {{ common_timezone }}
+      when: current_timezone.stdout != common_timezone
+  rescue:
+    - name: Recover apt cache with fix-missing
+      ansible.builtin.command: apt-get update --fix-missing
+      changed_when: false
+
+    - name: Retry common packages installation
+      ansible.builtin.apt:
+        name: "{{ common_packages }}"
+        state: present
+        update_cache: yes
+  always:
+    - name: Log packages block completion
+      ansible.builtin.lineinfile:
+        path: /tmp/ansible-common.log
+        line: "packages block finished"
+        create: yes
+        mode: "0644"
+  become: true
+  tags:
+    - common
+    - packages
+
+- name: Manage common users
+  block:
+    - name: Ensure managed users are present
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        shell: "{{ item.shell | default('/bin/bash') }}"
+        state: present
+      loop: "{{ common_users }}"
+      when: common_users | length > 0
+  always:
+    - name: Log users block completion
+      ansible.builtin.lineinfile:
+        path: /tmp/ansible-common.log
+        line: "users block finished"
+        create: yes
+        mode: "0644"
+  become: true
+  tags:
+    - common
+    - users
