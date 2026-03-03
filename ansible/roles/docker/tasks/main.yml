@@ -1,5 +1,8 @@
 ---
 - name: Install Docker engine
+  tags:
+    - docker
+    - docker_install
   block:
     - name: Install Docker prerequisites
       ansible.builtin.apt:
@@ -8,7 +11,7 @@
           - curl
           - gnupg
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Ensure keyrings directory exists
       ansible.builtin.file:
@@ -32,7 +35,7 @@
       ansible.builtin.apt:
         name: "{{ docker_packages }}"
         state: present
-        update_cache: yes
+        update_cache: true
   rescue:
     - name: Wait before retrying Docker setup
       ansible.builtin.wait_for:
@@ -40,7 +43,7 @@
 
     - name: Refresh apt cache after Docker key failure
       ansible.builtin.apt:
-        update_cache: yes
+        update_cache: true
 
     - name: Retry Docker GPG key
       ansible.builtin.get_url:
@@ -58,24 +61,24 @@
       ansible.builtin.apt:
         name: "{{ docker_packages }}"
         state: present
-        update_cache: yes
-  tags:
-    - docker
-    - docker_install
+        update_cache: true
 
 - name: Configure Docker runtime
+  tags:
+    - docker
+    - docker_config
   block:
     - name: Ensure docker socket is enabled and running
       ansible.builtin.service:
         name: docker.socket
-        enabled: yes
+        enabled: true
         state: started
 
     - name: Add user to docker group
       ansible.builtin.user:
         name: "{{ docker_user }}"
         groups: docker
-        append: yes
+        append: true
 
     - name: Install Python Docker SDK package
       ansible.builtin.apt:
@@ -85,8 +88,5 @@
     - name: Ensure Docker service is enabled and running
       ansible.builtin.service:
         name: docker
-        enabled: yes
+        enabled: true
         state: started
-  tags:
-    - docker
-    - docker_config

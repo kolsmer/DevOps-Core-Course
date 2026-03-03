@@ -1,7 +1,7 @@
 ---
 - name: Provision web servers
   hosts: webservers
-  become: yes
+  become: true
   roles:
     - role: common
       tags:
@@ -12,7 +12,7 @@
 
 - name: Deploy application
   hosts: webservers
-  become: yes
+  become: true
   vars_files:
     - ../group_vars/all.yml
   roles:
