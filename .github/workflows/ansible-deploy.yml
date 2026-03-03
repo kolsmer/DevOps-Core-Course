@@ -55,23 +55,47 @@ jobs:
     name: Deploy Application
     needs: lint
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && secrets.SSH_PRIVATE_KEY != '' && secrets.VM_HOST != '' && secrets.VM_USER != '' && secrets.ANSIBLE_VAULT_PASSWORD != ''
+    if: github.event_name == 'push'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        id: secrets_check
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          missing=()
+          [ -n "$SSH_PRIVATE_KEY" ] || missing+=("SSH_PRIVATE_KEY")
+          [ -n "$VM_HOST" ] || missing+=("VM_HOST")
+          [ -n "$VM_USER" ] || missing+=("VM_USER")
+          [ -n "$ANSIBLE_VAULT_PASSWORD" ] || missing+=("ANSIBLE_VAULT_PASSWORD")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+            echo "Missing secrets: ${missing[*]}"
+          else
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Python
+        if: steps.secrets_check.outputs.missing == 'false'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
       - name: Install Ansible and collections
+        if: steps.secrets_check.outputs.missing == 'false'
         run: |
           python -m pip install --upgrade pip
           pip install ansible-core
           ansible-galaxy collection install community.docker
 
       - name: Configure SSH key
+        if: steps.secrets_check.outputs.missing == 'false'
         run: |
           set -euo pipefail
           test -n "${{ secrets.SSH_PRIVATE_KEY }}"
@@ -82,6 +106,7 @@ jobs:
           ssh-keyscan -H "${{ secrets.VM_HOST }}" >> "$HOME/.ssh/known_hosts"
 
       - name: Deploy with Ansible
+        if: steps.secrets_check.outputs.missing == 'false'
         run: |
           cd ansible
           echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
@@ -98,6 +123,11 @@ jobs:
           rm -f /tmp/vault_pass
 
       - name: Verify deployment
+        if: steps.secrets_check.outputs.missing == 'false'
         run: |
           sleep 10
           curl -f "http://${{ secrets.VM_HOST }}:5000/health"
+
+      - name: Skip deploy (missing secrets)
+        if: steps.secrets_check.outputs.missing == 'true'
+        run: echo "Skipping deploy job because required secrets are not configured for this run"
