@@ -145,6 +145,9 @@ Required GitHub Secrets:
 
 Added workflow badge in root `README.md`.
 
+CI/CD run evidence:
+![GitHub Actions successful run](screenshots/cicd-evidence.png)
+
 ## 4. Runtime verification
 
 Successful deploy recap:
@@ -181,7 +184,7 @@ Evidence status:
 - Docker Compose deployment and health evidence: provided
 - CI workflow file and badge: provided
 - Rescue-trigger runtime output: captured via dedicated demo playbook run (see below)
-- GitHub Actions successful run screenshots/log excerpts: pending in GitHub UI after push
+- GitHub Actions successful run screenshots/log excerpts: provided (`screenshots/cicd-evidence.png`)
 
 ### Rescue block evidence (runtime)
 Command:
