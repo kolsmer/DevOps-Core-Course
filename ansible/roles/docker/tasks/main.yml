@@ -1,56 +1,92 @@
 ---
-- name: Install Docker prerequisites
-  ansible.builtin.apt:
-    name:
-      - ca-certificates
-      - curl
-      - gnupg
-    state: present
-    update_cache: yes
+- name: Install Docker engine
+  tags:
+    - docker
+    - docker_install
+  block:
+    - name: Install Docker prerequisites
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: true
 
-- name: Ensure keyrings directory exists
-  ansible.builtin.file:
-    path: /etc/apt/keyrings
-    state: directory
-    mode: "0755"
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
 
-- name: Add Docker GPG key
-  ansible.builtin.get_url:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    dest: /etc/apt/keyrings/docker.asc
-    mode: "0644"
+    - name: Add Docker GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
 
-- name: Add Docker repository
-  ansible.builtin.apt_repository:
-    repo: "{{ docker_repo }}"
-    state: present
-    filename: docker
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "{{ docker_repo }}"
+        state: present
+        filename: docker
 
-- name: Install Docker packages
-  ansible.builtin.apt:
-    name: "{{ docker_packages }}"
-    state: present
-    update_cache: yes
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name: "{{ docker_packages }}"
+        state: present
+        update_cache: true
+  rescue:
+    - name: Wait before retrying Docker setup
+      ansible.builtin.wait_for:
+        timeout: 10
 
-- name: Ensure docker socket is enabled and running
-  ansible.builtin.service:
-    name: docker.socket
-    enabled: yes
-    state: started
+    - name: Refresh apt cache after Docker key failure
+      ansible.builtin.apt:
+        update_cache: true
 
-- name: Ensure Docker service is enabled and running
-  ansible.builtin.service:
-    name: docker
-    enabled: yes
-    state: started
+    - name: Retry Docker GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
 
-- name: Add user to docker group
-  ansible.builtin.user:
-    name: "{{ docker_user }}"
-    groups: docker
-    append: yes
+    - name: Retry Docker repository setup
+      ansible.builtin.apt_repository:
+        repo: "{{ docker_repo }}"
+        state: present
+        filename: docker
 
-- name: Install Python Docker SDK package
-  ansible.builtin.apt:
-    name: python3-docker
-    state: present
+    - name: Retry Docker packages installation
+      ansible.builtin.apt:
+        name: "{{ docker_packages }}"
+        state: present
+        update_cache: true
+
+- name: Configure Docker runtime
+  tags:
+    - docker
+    - docker_config
+  block:
+    - name: Ensure docker socket is enabled and running
+      ansible.builtin.service:
+        name: docker.socket
+        enabled: true
+        state: started
+
+    - name: Add user to docker group
+      ansible.builtin.user:
+        name: "{{ docker_user }}"
+        groups: docker
+        append: true
+
+    - name: Install Python Docker SDK package
+      ansible.builtin.apt:
+        name: python3-docker
+        state: present
+  always:
+    - name: Ensure Docker service is enabled and running
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+        state: started

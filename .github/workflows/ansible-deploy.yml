@@ -1,0 +1,133 @@
+name: Ansible Deployment
+
+on:
+  push:
+    branches: [ master, main, lab06 ]
+    paths:
+      - 'ansible/**'
+      - '!ansible/docs/**'
+      - '.github/workflows/ansible-deploy.yml'
+  pull_request:
+    branches: [ master, main, lab06 ]
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-deploy.yml'
+
+jobs:
+  lint:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core ansible-lint
+          ansible-galaxy collection install community.docker
+
+      - name: Run ansible-lint
+        run: |
+          mkdir -p ansible
+          if [ -z "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" ]; then
+            echo "ANSIBLE_VAULT_PASSWORD is not available; running lint for non-vault playbook only"
+            printf 'ci-dummy-vault-pass\n' > ansible/.vault_pass
+            chmod 600 ansible/.vault_pass
+            cd ansible
+            ansible-lint playbooks/provision.yml
+            rm -f .vault_pass
+            exit 0
+          fi
+
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > ansible/.vault_pass
+          chmod 600 ansible/.vault_pass
+          cd ansible
+          ansible-lint playbooks/*.yml
+          rm -f .vault_pass
+
+  deploy:
+    name: Deploy Application
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        id: secrets_check
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          missing=()
+          [ -n "$SSH_PRIVATE_KEY" ] || missing+=("SSH_PRIVATE_KEY")
+          [ -n "$VM_HOST" ] || missing+=("VM_HOST")
+          [ -n "$VM_USER" ] || missing+=("VM_USER")
+          [ -n "$ANSIBLE_VAULT_PASSWORD" ] || missing+=("ANSIBLE_VAULT_PASSWORD")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+            echo "Missing secrets: ${missing[*]}"
+          else
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.secrets_check.outputs.missing == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible and collections
+        if: steps.secrets_check.outputs.missing == 'false'
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core
+          ansible-galaxy collection install community.docker
+
+      - name: Configure SSH key
+        if: steps.secrets_check.outputs.missing == 'false'
+        run: |
+          set -euo pipefail
+          test -n "${{ secrets.SSH_PRIVATE_KEY }}"
+          test -n "${{ secrets.VM_HOST }}"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > "$HOME/.ssh/id_rsa"
+          chmod 600 "$HOME/.ssh/id_rsa"
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> "$HOME/.ssh/known_hosts"
+
+      - name: Deploy with Ansible
+        if: steps.secrets_check.outputs.missing == 'false'
+        run: |
+          cd ansible
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
+          chmod 600 .vault_pass
+          cat > inventory/hosts.github.ini <<EOF
+          [webservers]
+          ci-target ansible_host=${{ secrets.VM_HOST }} ansible_user=${{ secrets.VM_USER }} ansible_ssh_private_key_file=$HOME/.ssh/id_rsa ansible_python_interpreter=/usr/bin/python3
+          EOF
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault_pass
+          ansible-playbook playbooks/deploy.yml \
+            -i inventory/hosts.github.ini \
+            --vault-password-file /tmp/vault_pass
+          rm -f .vault_pass
+          rm -f /tmp/vault_pass
+
+      - name: Verify deployment
+        if: steps.secrets_check.outputs.missing == 'false'
+        run: |
+          sleep 10
+          curl -f "http://${{ secrets.VM_HOST }}:5000/health"
+
+      - name: Skip deploy (missing secrets)
+        if: steps.secrets_check.outputs.missing == 'true'
+        run: echo "Skipping deploy job because required secrets are not configured for this run"

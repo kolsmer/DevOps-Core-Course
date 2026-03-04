@@ -1,0 +1,74 @@
+---
+- name: Include wipe tasks
+  ansible.builtin.include_tasks: wipe.yml
+  tags:
+    - web_app_wipe
+
+- name: Deploy web application with Docker Compose
+  block:
+    - name: Log in to Docker Hub
+      community.docker.docker_login:
+        username: "{{ dockerhub_username }}"
+        password: "{{ dockerhub_password }}"
+      no_log: true
+
+    - name: Create compose project directory
+      ansible.builtin.file:
+        path: "{{ compose_project_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Render docker-compose template
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: "{{ compose_project_dir }}/docker-compose.yml"
+        mode: "0644"
+
+    - name: Detect existing container compose label
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - "{{ '{{ index .Config.Labels \"com.docker.compose.project\" }}' }}"
+          - "{{ app_name }}"
+      register: compose_project_label
+      failed_when: false
+      changed_when: false
+
+    - name: Remove legacy standalone container before compose migration
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        state: absent
+      when:
+        - compose_project_label.rc == 0
+        - compose_project_label.stdout | trim == ""
+
+    - name: Deploy stack with Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_project_dir }}"
+        state: present
+        pull: missing
+
+    - name: Wait for application port
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port }}"
+        delay: 3
+        timeout: 60
+
+    - name: Verify health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}{{ app_healthcheck_path }}"
+        method: GET
+        status_code: 200
+  rescue:
+    - name: Log deployment failure details
+      ansible.builtin.debug:
+        msg: "Web app deployment block failed for {{ app_name }}"
+  when: not (web_app_wipe | bool and ('web_app_wipe' in ansible_run_tags))
+  tags:
+    - web_app
+    - app_deploy
+    - compose
+    - web_app_wipe
