@@ -5,13 +5,33 @@ import logging
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from pythonjsonlogger import jsonlogger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+
+def _build_logger(name: str) -> logging.Logger:
+    """Create a logger that outputs JSON when LOG_FORMAT=json (default)."""
+    log = logging.getLogger(name)
+    log.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler()
+    if os.getenv("LOG_FORMAT", "json").lower() == "json":
+        fmt = jsonlogger.JsonFormatter(
+            fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
+            datefmt="%Y-%m-%dT%H:%M:%S",
+            rename_fields={"asctime": "timestamp", "levelname": "level"},
+        )
+    else:
+        fmt = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+    handler.setFormatter(fmt)
+    log.addHandler(handler)
+    # Prevent duplicate logs from root logger
+    log.propagate = False
+    return log
+
+
+logger = _build_logger(__name__)
 
 # Create FastAPI application
 app = FastAPI(
@@ -28,7 +48,7 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 # Application start time
 START_TIME = datetime.now(timezone.utc)
 
-logger.info('Application starting...')
+logger.info("Application starting", extra={"version": "1.0.0", "host": os.getenv("HOST", "0.0.0.0"), "port": int(os.getenv("PORT", 8000))})
 
 
 def get_system_info():
@@ -53,6 +73,26 @@ def get_uptime():
         'seconds': seconds,
         'human': f"{hours} hour{'s' if hours != 1 else ''}, {minutes} minute{'s' if minutes != 1 else ''}"
     }
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log every HTTP request and response in structured JSON."""
+    start = datetime.now(timezone.utc)
+    response = await call_next(request)
+    duration_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+    logger.info(
+        "http_request",
+        extra={
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "client_ip": request.client.host if request.client else "unknown",
+            "user_agent": request.headers.get("user-agent", ""),
+            "duration_ms": round(duration_ms, 2),
+        },
+    )
+    return response
 
 
 @app.get("/")
@@ -115,7 +155,7 @@ async def not_found_handler(request: Request, exc):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions."""
-    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    logger.error("unexpected_error", extra={"error": str(exc), "path": request.url.path}, exc_info=True)
     return JSONResponse(
         status_code=500,
         content={
@@ -127,5 +167,5 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"Starting server on {HOST}:{PORT}")
+    logger.info("starting_server", extra={"host": HOST, "port": PORT})
     uvicorn.run(app, host=HOST, port=PORT, log_level="info" if DEBUG else "warning")

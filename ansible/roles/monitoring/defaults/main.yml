@@ -1,0 +1,23 @@
+---
+# Monitoring stack versions
+monitoring_loki_version: "3.0.0"
+monitoring_promtail_version: "3.0.0"
+monitoring_grafana_version: "12.3.1"
+
+# Ports
+monitoring_loki_port: 3100
+monitoring_promtail_port: 9080
+monitoring_grafana_port: 3000
+
+# Deploy directory on target host
+monitoring_project_dir: /opt/monitoring
+
+# Loki settings
+monitoring_loki_retention: "168h"
+monitoring_loki_schema_version: "v13"
+
+# Grafana credentials (override via vault or group_vars)
+monitoring_grafana_admin_user: admin
+monitoring_grafana_admin_password: "changeme"
+
+monitoring_app_port: 8000

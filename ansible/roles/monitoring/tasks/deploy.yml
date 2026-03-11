@@ -1,0 +1,47 @@
+---
+- name: Deploy monitoring stack with Docker Compose
+  block:
+    - name: Deploy with Docker Compose v2
+      community.docker.docker_compose_v2:
+        project_src: "{{ monitoring_project_dir }}"
+        pull: missing
+        state: present
+      register: monitoring_compose_result
+
+    - name: Wait for Loki to be ready
+      ansible.builtin.uri:
+        url: "http://localhost:{{ monitoring_loki_port }}/ready"
+        method: GET
+        status_code: 200
+      register: monitoring_loki_ready
+      until: monitoring_loki_ready.status == 200
+      retries: 12
+      delay: 10
+
+    - name: Wait for Grafana to be ready
+      ansible.builtin.uri:
+        url: "http://localhost:{{ monitoring_grafana_port }}/api/health"
+        method: GET
+        status_code: 200
+      register: monitoring_grafana_ready
+      until: monitoring_grafana_ready.status == 200
+      retries: 12
+      delay: 10
+
+    - name: Report stack status
+      ansible.builtin.debug:
+        msg: "Monitoring stack deployed: Loki :{{ monitoring_loki_port }}, Grafana :{{ monitoring_grafana_port }}"
+
+  rescue:
+    - name: Show compose logs on failure
+      ansible.builtin.command:
+        cmd: docker compose logs --tail=50
+        chdir: "{{ monitoring_project_dir }}"
+      register: monitoring_compose_logs
+      changed_when: false
+
+    - name: Display compose logs
+      ansible.builtin.debug:
+        var: monitoring_compose_logs.stdout_lines
+
+  tags: [monitoring, monitoring_deploy]
