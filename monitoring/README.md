@@ -1,6 +1,6 @@
-# Monitoring — Loki Stack
+# Monitoring Stack
 
-Centralized logging with **Loki 3.0**, **Promtail 3.0**, and **Grafana 12.3**.
+Centralized logs + metrics with Loki, Promtail, Prometheus, and Grafana.
 
 ## Quick Start
 
@@ -12,19 +12,21 @@ docker compose up -d
 | Service  | URL                          |
 |----------|------------------------------|
 | Grafana  | <http://localhost:3000>       |
+| Prometheus | <http://localhost:9090>     |
 | Loki     | <http://localhost:3100/ready> |
 | Promtail | <http://localhost:9080/targets> |
 
-Loki datasource and the **App Logs Dashboard** are provisioned automatically.
+Grafana datasources (Loki + Prometheus) and dashboards are provisioned automatically.
 
 ## Stack
 
-| Component | Image              | Role                     |
-|-----------|--------------------|--------------------------|
-| Loki      | `grafana/loki:3.0.0`     | Log storage (TSDB)       |
-| Promtail  | `grafana/promtail:3.0.0` | Log collector (Docker SD)|
-| Grafana   | `grafana/grafana:12.3.1` | Visualization            |
-| app-python | built from `../app_python` | App under observation |
+| Component | Image | Role |
+|-----------|-------|------|
+| Loki | `grafana/loki:3.0.0` | Log storage |
+| Promtail | `grafana/promtail:3.0.0` | Log collector |
+| Prometheus | `prom/prometheus:v3.9.0` | Metrics scrape + TSDB |
+| Grafana | `grafana/grafana:12.3.1` | Dashboards |
+| app-python | built from `../app_python` | Monitored app |
 
 ## Log Collection
 

@@ -2,9 +2,17 @@ import os
 import socket
 import platform
 import logging
+import time
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 from pythonjsonlogger import jsonlogger
 
 
@@ -33,6 +41,35 @@ def _build_logger(name: str) -> logging.Logger:
 
 logger = _build_logger(__name__)
 
+HTTP_REQUESTS_TOTAL = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status_code"],
+)
+
+HTTP_REQUEST_DURATION_SECONDS = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
+)
+
+HTTP_REQUESTS_IN_PROGRESS = Gauge(
+    "http_requests_in_progress",
+    "HTTP requests currently being processed",
+    ["method", "endpoint"],
+)
+
+DEVOPS_INFO_ENDPOINT_CALLS = Counter(
+    "devops_info_endpoint_calls_total",
+    "Number of calls to info service endpoints",
+    ["endpoint"],
+)
+
+DEVOPS_INFO_SYSTEM_COLLECTION_SECONDS = Histogram(
+    "devops_info_system_collection_seconds",
+    "Time spent collecting system information",
+)
+
 # Create FastAPI application
 app = FastAPI(
     title="DevOps Info Service",
@@ -53,7 +90,8 @@ logger.info("Application starting", extra={"version": "1.0.0", "host": os.getenv
 
 def get_system_info():
     """Collect system information."""
-    return {
+    started_at = time.perf_counter()
+    system_info = {
         'hostname': socket.gethostname(),
         'platform': platform.system(),
         'platform_version': platform.release(),
@@ -61,6 +99,15 @@ def get_system_info():
         'cpu_count': os.cpu_count() or 1,
         'python_version': platform.python_version()
     }
+    DEVOPS_INFO_SYSTEM_COLLECTION_SECONDS.observe(time.perf_counter() - started_at)
+    return system_info
+
+
+def normalize_endpoint(path: str) -> str:
+    """Keep endpoint labels low-cardinality for Prometheus."""
+    if path in {"/", "/health", "/metrics"}:
+        return path
+    return "/other"
 
 
 def get_uptime():
@@ -78,26 +125,50 @@ def get_uptime():
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log every HTTP request and response in structured JSON."""
-    start = datetime.now(timezone.utc)
-    response = await call_next(request)
-    duration_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
-    logger.info(
-        "http_request",
-        extra={
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code,
-            "client_ip": request.client.host if request.client else "unknown",
-            "user_agent": request.headers.get("user-agent", ""),
-            "duration_ms": round(duration_ms, 2),
-        },
-    )
-    return response
+    method = request.method
+    endpoint = normalize_endpoint(request.url.path)
+    started_at = time.perf_counter()
+
+    HTTP_REQUESTS_IN_PROGRESS.labels(method=method, endpoint=endpoint).inc()
+    response = None
+    status_code = "500"
+    try:
+        response = await call_next(request)
+        status_code = str(response.status_code)
+        return response
+    finally:
+        elapsed_seconds = time.perf_counter() - started_at
+        duration_ms = elapsed_seconds * 1000
+
+        HTTP_REQUESTS_IN_PROGRESS.labels(method=method, endpoint=endpoint).dec()
+        if endpoint != "/metrics":
+            HTTP_REQUESTS_TOTAL.labels(
+                method=method,
+                endpoint=endpoint,
+                status_code=status_code,
+            ).inc()
+            HTTP_REQUEST_DURATION_SECONDS.labels(
+                method=method,
+                endpoint=endpoint,
+            ).observe(elapsed_seconds)
+
+        logger.info(
+            "http_request",
+            extra={
+                "method": method,
+                "path": request.url.path,
+                "status_code": int(status_code),
+                "client_ip": request.client.host if request.client else "unknown",
+                "user_agent": request.headers.get("user-agent", ""),
+                "duration_ms": round(duration_ms, 2),
+            },
+        )
 
 
 @app.get("/")
 async def index(request: Request):
     """Main endpoint - service and system information."""
+    DEVOPS_INFO_ENDPOINT_CALLS.labels(endpoint="/").inc()
     uptime = get_uptime()
     system_info = get_system_info()
     
@@ -131,12 +202,19 @@ async def index(request: Request):
 @app.get("/health")
 async def health():
     """Health check endpoint."""
+    DEVOPS_INFO_ENDPOINT_CALLS.labels(endpoint="/health").inc()
     uptime = get_uptime()
     return JSONResponse({
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "uptime_seconds": uptime['seconds']
     })
+
+
+@app.get("/metrics")
+async def metrics():
+    """Expose Prometheus metrics."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.exception_handler(404)
