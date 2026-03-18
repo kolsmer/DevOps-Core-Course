@@ -2,8 +2,6 @@
 - name: Deploy monitoring stack (Loki + Promtail + Grafana)
   hosts: webservers
   become: true
-  vars_files:
-    - ../group_vars/all.yml
 
   roles:
     - role: monitoring

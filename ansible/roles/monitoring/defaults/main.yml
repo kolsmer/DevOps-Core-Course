@@ -3,11 +3,13 @@
 monitoring_loki_version: "3.0.0"
 monitoring_promtail_version: "3.0.0"
 monitoring_grafana_version: "12.3.1"
+monitoring_prometheus_version: "v3.9.0"
 
 # Ports
 monitoring_loki_port: 3100
 monitoring_promtail_port: 9080
 monitoring_grafana_port: 3000
+monitoring_prometheus_port: 9090
 
 # Deploy directory on target host
 monitoring_project_dir: /opt/monitoring
@@ -16,8 +18,14 @@ monitoring_project_dir: /opt/monitoring
 monitoring_loki_retention: "168h"
 monitoring_loki_schema_version: "v13"
 
+# Prometheus settings
+monitoring_prometheus_retention_time: "15d"
+monitoring_prometheus_retention_size: "10GB"
+monitoring_prometheus_scrape_interval: "15s"
+
 # Grafana credentials (override via vault or group_vars)
 monitoring_grafana_admin_user: admin
 monitoring_grafana_admin_password: "changeme"
 
+monitoring_app_image: "devops-info-service:latest"
 monitoring_app_port: 8000

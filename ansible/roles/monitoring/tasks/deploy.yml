@@ -28,9 +28,19 @@
       retries: 12
       delay: 10
 
+    - name: Wait for Prometheus to be ready
+      ansible.builtin.uri:
+        url: "http://localhost:{{ monitoring_prometheus_port }}/-/healthy"
+        method: GET
+        status_code: 200
+      register: monitoring_prometheus_ready
+      until: monitoring_prometheus_ready.status == 200
+      retries: 12
+      delay: 10
+
     - name: Report stack status
       ansible.builtin.debug:
-        msg: "Monitoring stack deployed: Loki :{{ monitoring_loki_port }}, Grafana :{{ monitoring_grafana_port }}"
+        msg: "Monitoring stack deployed: Loki :{{ monitoring_loki_port }}, Grafana :{{ monitoring_grafana_port }}, Prometheus :{{ monitoring_prometheus_port }}"
 
   rescue:
     - name: Show compose logs on failure
