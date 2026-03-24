@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-info
+  namespace: devops-lab09
+  labels:
+    app: devops-info
+    app.kubernetes.io/name: devops-info
+    app.kubernetes.io/part-of: devops-core-course
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: devops-info
+  template:
+    metadata:
+      labels:
+        app: devops-info
+        app.kubernetes.io/name: devops-info
+        app.kubernetes.io/part-of: devops-core-course
+    spec:
+      containers:
+        - name: devops-info
+          image: devops-info-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: PORT
+              value: "8000"
+            - name: LOG_FORMAT
+              value: "json"
+            - name: RELEASE_VERSION
+              value: "v1"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
