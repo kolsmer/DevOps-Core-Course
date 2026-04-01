@@ -1,0 +1,6 @@
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Service: {{ include "devops-info.fullname" . }}
+
+Check status:
+kubectl -n {{ .Release.Namespace }} get deploy,svc,pods
