@@ -52,3 +52,25 @@ Selector labels
 app.kubernetes.io/name: {{ include "devops-info.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Service account name
+*/}}
+{{- define "devops-info.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "devops-info.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Secret name
+*/}}
+{{- define "devops-info.secretName" -}}
+{{- if .Values.secrets.name }}
+{{- .Values.secrets.name }}
+{{- else }}
+{{- printf "%s-secret" (include "devops-info.fullname" .) }}
+{{- end }}
+{{- end }}

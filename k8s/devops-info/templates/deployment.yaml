@@ -17,14 +17,22 @@ spec:
       {{- include "devops-info.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- if or .Values.vault.enabled .Values.podAnnotations }}
       annotations:
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        vault.hashicorp.com/agent-inject-secret-{{ .Values.vault.injectFileName }}: {{ .Values.vault.secretPath | quote }}
+        {{- end }}
       {{- end }}
       labels:
         {{- include "devops-info.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: devops-core-course
     spec:
+      serviceAccountName: {{ include "devops-info.serviceAccountName" . }}
       containers:
         - name: {{ include "devops-info.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -38,6 +46,9 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ include "devops-info.secretName" . }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
