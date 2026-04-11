@@ -74,3 +74,28 @@ Secret name
 {{- printf "%s-secret" (include "devops-info.fullname" .) }}
 {{- end }}
 {{- end }}
+
+{{/*
+ConfigMap name for file config
+*/}}
+{{- define "devops-info.configName" -}}
+{{- printf "%s-config" (include "devops-info.fullname" .) }}
+{{- end }}
+
+{{/*
+ConfigMap name for env vars
+*/}}
+{{- define "devops-info.envConfigName" -}}
+{{- printf "%s-env" (include "devops-info.fullname" .) }}
+{{- end }}
+
+{{/*
+PVC name
+*/}}
+{{- define "devops-info.pvcName" -}}
+{{- if .Values.persistence.existingClaim }}
+{{- .Values.persistence.existingClaim }}
+{{- else }}
+{{- printf "%s-data" (include "devops-info.fullname" .) }}
+{{- end }}
+{{- end }}

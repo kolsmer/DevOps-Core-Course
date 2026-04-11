@@ -110,6 +110,11 @@ Returns comprehensive service and system information.
       "path": "/health",
       "method": "GET",
       "description": "Health check"
+    },
+    {
+      "path": "/visits",
+      "method": "GET",
+      "description": "Visits counter"
     }
   ]
 }
@@ -147,6 +152,21 @@ while true; do
 done
 ```
 
+### GET /visits
+Returns current persistent visits counter value.
+
+```json
+{
+  "visits": 42,
+  "file": "/data/visits"
+}
+```
+
+**Test with curl:**
+```bash
+curl http://localhost:8000/visits
+```
+
 ## Configuration
 
 ### Environment Variables
@@ -156,6 +176,27 @@ done
 | `HOST` | `0.0.0.0` | Server binding address |
 | `PORT` | `8000` | Server port |
 | `DEBUG` | `False` | Enable debug mode |
+| `VISITS_FILE` | `/data/visits` | File path for persistent visits counter |
+
+### Local Docker Compose Persistence Test
+
+```bash
+cd app_python
+mkdir -p data
+docker compose up -d --build
+
+# Generate visits
+curl -s http://localhost:8000/
+curl -s http://localhost:8000/
+curl -s http://localhost:8000/visits
+
+# Counter persisted in host file
+cat data/visits
+
+# Restart container and verify persistence
+docker compose restart
+curl -s http://localhost:8000/visits
+```
 
 ### Example Configurations
 
