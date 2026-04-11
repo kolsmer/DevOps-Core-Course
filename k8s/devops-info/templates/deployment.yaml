@@ -47,8 +47,18 @@ spec:
               value: {{ $value | quote }}
             {{- end }}
           envFrom:
+            - configMapRef:
+                name: {{ include "devops-info.envConfigName" . }}
             - secretRef:
                 name: {{ include "devops-info.secretName" . }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+              readOnly: true
+            {{- if .Values.persistence.enabled }}
+            - name: data-volume
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
@@ -61,3 +71,12 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "devops-info.configName" . }}
+        {{- if .Values.persistence.enabled }}
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: {{ include "devops-info.pvcName" . }}
+        {{- end }}

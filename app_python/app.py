@@ -3,6 +3,7 @@ import socket
 import platform
 import logging
 import time
+import threading
 from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
@@ -84,8 +85,48 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # Application start time
 START_TIME = datetime.now(timezone.utc)
+VISITS_FILE = os.getenv("VISITS_FILE", "/data/visits")
+VISITS_LOCK = threading.Lock()
 
 logger.info("Application starting", extra={"version": "1.0.0", "host": os.getenv("HOST", "0.0.0.0"), "port": int(os.getenv("PORT", 8000))})
+
+
+def _ensure_visits_dir() -> None:
+    directory = os.path.dirname(VISITS_FILE)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+
+
+def _read_visits() -> int:
+    try:
+        with open(VISITS_FILE, "r", encoding="utf-8") as fh:
+            return int(fh.read().strip() or "0")
+    except FileNotFoundError:
+        return 0
+    except (ValueError, OSError):
+        logger.warning("invalid_visits_file", extra={"path": VISITS_FILE})
+        return 0
+
+
+def _write_visits(value: int) -> None:
+    _ensure_visits_dir()
+    tmp_path = f"{VISITS_FILE}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as fh:
+        fh.write(str(value))
+    os.replace(tmp_path, VISITS_FILE)
+
+
+def increment_visits() -> int:
+    with VISITS_LOCK:
+        current = _read_visits()
+        updated = current + 1
+        _write_visits(updated)
+        return updated
+
+
+def current_visits() -> int:
+    with VISITS_LOCK:
+        return _read_visits()
 
 
 def get_system_info():
@@ -171,6 +212,7 @@ async def index(request: Request):
     DEVOPS_INFO_ENDPOINT_CALLS.labels(endpoint="/").inc()
     uptime = get_uptime()
     system_info = get_system_info()
+    visits = increment_visits()
     
     return JSONResponse({
         "service": {
@@ -192,9 +234,15 @@ async def index(request: Request):
             "method": request.method,
             "path": request.url.path
         },
+        "visits": {
+            "count": visits,
+            "file": VISITS_FILE,
+        },
         "endpoints": [
             {"path": "/", "method": "GET", "description": "Service information"},
-            {"path": "/health", "method": "GET", "description": "Health check"}
+            {"path": "/health", "method": "GET", "description": "Health check"},
+            {"path": "/visits", "method": "GET", "description": "Visits counter"},
+            {"path": "/metrics", "method": "GET", "description": "Prometheus metrics"},
         ]
     })
 
@@ -209,6 +257,14 @@ async def health():
         "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "uptime_seconds": uptime['seconds']
     })
+
+
+@app.get("/visits")
+async def visits():
+    """Visits counter endpoint."""
+    DEVOPS_INFO_ENDPOINT_CALLS.labels(endpoint="/visits").inc()
+    count = current_visits()
+    return JSONResponse({"visits": count, "file": VISITS_FILE})
 
 
 @app.get("/metrics")
