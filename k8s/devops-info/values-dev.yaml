@@ -9,7 +9,7 @@ configEnv:
 
 service:
   type: NodePort
-  nodePort: 30081
+  nodePort: 30082
 
 persistence:
   size: 100Mi

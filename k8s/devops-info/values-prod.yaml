@@ -8,7 +8,7 @@ configEnv:
   logLevel: "warning"
 
 service:
-  type: LoadBalancer
+  type: ClusterIP
 
 persistence:
   size: 1Gi
